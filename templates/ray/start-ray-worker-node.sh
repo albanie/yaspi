@@ -8,11 +8,15 @@ PID=$$
 redis_address=$1
 worker_id=$2
 
+# Ensure that node disks are setup
+source ~/configure_tmp_data.sh
+
+
 # Setup the environment for Ray
 {{env_setup}}
 
 # Launch the worker node
-cmd="ray start --redis-address=${redis_address}"
+cmd="ray start --redis-address=${redis_address} {{ray_args}}"
 echo "running cmd: ${cmd}"
 eval $cmd
 

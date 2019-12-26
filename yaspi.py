@@ -3,6 +3,7 @@
 
 import os
 import re
+import time
 import psutil
 import argparse
 import subprocess
@@ -15,10 +16,11 @@ class Yaspi:
 
     def __init__(self, job_name, cmd, recipe, gen_script_dir, template_dir, log_dir,
                  partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
-                 env_setup=None):
+                 exclude, env_setup=None):
         self.cmd = cmd
         self.log_dir = log_dir
         self.recipe = recipe
+        self.exclude = exclude
         self.job_name = job_name
         self.partition = partition
         self.env_setup = env_setup
@@ -49,6 +51,10 @@ class Yaspi:
                 "worker-node": "ray/start-ray-worker-node.sh",
             }
             self.log_path = str(Path(self.log_dir) / self.job_name / "%4a-log.txt")
+            # NOTE: Due to unix max socket length (108 characters, this must be short and
+            # absolute)
+            ray_tmp_dir = Path.home() / "data/sock"
+            ray_tmp_dir.mkdir(exist_ok=True, parents=True)
             rules = {
                 "master": {
                     "nfs_update_secs": 1,
@@ -63,18 +69,21 @@ class Yaspi:
                     "array": f"1-{self.job_array_size}",
                     "cpus_per_task": self.cpus_per_task,
                     "approx_ray_init_time_in_secs": 10,
+                    "exclude_nodes": f"#SBATCH --exclude={self.exclude}",
                     "head_init_script": str(gen_dir / template_paths["head-node"]),
                     "worker_init_script": str(gen_dir / template_paths["worker-node"]),
                 },
                 "head-node": {
+                    "ray_args": f"--temp-dir={ray_tmp_dir}",
                     "env_setup": self.env_setup,
                 },
                 "worker-node": {
+                    "ray_args": f"--temp-dir={ray_tmp_dir}",
                     "env_setup": self.env_setup,
                 },
             }
             if self.gpus_per_task:
-                resource_str = f"SBATCH --gres=gpu:{self.gpus_per_task}"
+                resource_str = f"#SBATCH --gres=gpu:{self.gpus_per_task}"
                 rules["sbatch"]["sbatch_resources"] = resource_str
         else:
             raise ValueError(f"template: {self.recipe} unrecognised")
@@ -96,12 +105,19 @@ class Yaspi:
     def get_log_paths(self):
         watched_logs = []
         for idx in range(self.job_array_size):
+            if self.recipe == "ray" and idx > 0:
+                # for ray jobs, we only need to watch the log from the headnode
+                break
             slurm_id = idx + 1
             watched_log = Path(str(self.log_path).replace("%4a", f"{slurm_id:04d}"))
             watched_log.parent.mkdir(exist_ok=True, parents=True)
             if self.refresh_logs:
                 if watched_log.exists():
                     watched_log.unlink()
+                    # We also remove Pygtail files
+                    pygtail_file = watched_log.with_suffix(".txt.offset")
+                    if pygtail_file.exists():
+                        pygtail_file.unlink()
             # We must make sure that the log file exists to enable monitoring
             if not watched_log.exists():
                 print(f"Creating watch log: {watched_log} for the first time")
@@ -116,7 +132,11 @@ class Yaspi:
         print(f"Submitting job with command: {submission_cmd}")
         os.system(submission_cmd)
         if watch:
-            Watcher(watched_logs=watched_logs).run()
+            Watcher(
+                heartbeat=True,
+                conserve_resources=True,
+                watched_logs=watched_logs,
+            ).run()
 
 
     def fill_template(self, template_path, rules):
@@ -175,13 +195,16 @@ def main():
     parser.add_argument("--refresh_logs", action="store_true")
     parser.add_argument("--watch", type=int, default=1,
                         help="whether to watch the generated SLURM logs")
+    parser.add_argument("--exclude", default="",
+                        help="comma separated list of nodes to exclude")
     args = parser.parse_args()
 
     job = Yaspi(
         cmd=args.cmd,
         log_dir=args.log_dir,
-        job_name=args.job_name,
         recipe=args.recipe,
+        exclude=args.exclude,
+        job_name=args.job_name,
         partition=args.partition,
         template_dir=args.template_dir,
         gen_script_dir=args.gen_script_dir,

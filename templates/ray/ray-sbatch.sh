@@ -1,10 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name={{job_name}}
 #SBATCH --array={{array}}
+#SBATCH --time=96:00:00
 #SBATCH --output={{log_path}}
 #SBATCH --partition={{partition}}
 #SBATCH --cpus-per-task={{cpus_per_task}}
-#{{sbatch_resources}}
+{{sbatch_resources}}
+{{exclude_nodes}}
 # -------------------------------
 
 worker_id=$((SLURM_ARRAY_TASK_ID - 1))
@@ -54,8 +56,6 @@ fi
 
 if [ $worker_id -eq 0 ]; then
     {{env_setup}}
-    # train_script="hparam_train.py --config hconfigs/msrvtt.json --num_samples 10 --custom_args trainer.epochs@10"
-    # secs=20
     cmd="{{cmd}}"
     echo "Launching ${cmd} on head node in ${approx_ray_init_time_in_secs} secs"
     sleep ${approx_ray_init_time_in_secs}
