@@ -9,6 +9,9 @@
 {{exclude_nodes}}
 # -------------------------------
 
+# This script is a modification to the implementation suggest by gregSchwartz18 here:
+# https://github.com/ray-project/ray/issues/826#issuecomment-522116599
+
 worker_id=$((SLURM_ARRAY_TASK_ID - 1))
 echo "($HOSTNAME) This is SLURM job: $SLURM_ARRAY_JOB_ID, worker id $worker_id"
 

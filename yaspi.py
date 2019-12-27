@@ -1,15 +1,14 @@
-"""yaspi - yet another python slurm interface
+"""YASPI - yet another python slurm interface.
 """
 
 import os
 import re
 import time
-import psutil
 import argparse
 import subprocess
 from pathlib import Path
-from watchlogs.watchlogs import Watcher
 from itertools import zip_longest
+from watchlogs.watchlogs import Watcher
 
 
 class Yaspi:
