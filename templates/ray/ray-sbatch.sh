@@ -56,6 +56,7 @@ fi
 
 if [ $worker_id -eq 0 ]; then
     {{env_setup}}
+    {{ssh_forward}}
     cmd="{{cmd}}"
     echo "Launching ${cmd} on head node in ${approx_ray_init_time_in_secs} secs"
     sleep ${approx_ray_init_time_in_secs}

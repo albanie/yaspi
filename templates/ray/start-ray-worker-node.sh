@@ -8,10 +8,6 @@ PID=$$
 redis_address=$1
 worker_id=$2
 
-# Ensure that node disks are setup
-source ~/configure_tmp_data.sh
-
-
 # Setup the environment for Ray
 {{env_setup}}
 

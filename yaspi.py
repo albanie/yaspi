@@ -16,7 +16,7 @@ class Yaspi:
 
     def __init__(self, job_name, cmd, recipe, gen_script_dir, template_dir, log_dir,
                  partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
-                 exclude, env_setup=None):
+                 exclude, use_custom_ray_tmp_dir, ssh_forward, env_setup=None):
         self.cmd = cmd
         self.log_dir = log_dir
         self.recipe = recipe
@@ -24,12 +24,14 @@ class Yaspi:
         self.job_name = job_name
         self.partition = partition
         self.env_setup = env_setup
+        self.ssh_forward = ssh_forward
         self.refresh_logs = refresh_logs
         self.template_dir = template_dir
         self.cpus_per_task = cpus_per_task
         self.gpus_per_task = gpus_per_task
         self.gen_script_dir = gen_script_dir
         self.job_array_size = job_array_size
+        self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
         self.slurm_logs = None
         self.generate_scripts()
 
@@ -51,10 +53,14 @@ class Yaspi:
                 "worker-node": "ray/start-ray-worker-node.sh",
             }
             self.log_path = str(Path(self.log_dir) / self.job_name / "%4a-log.txt")
-            # NOTE: Due to unix max socket length (108 characters, this must be short and
-            # absolute)
-            ray_tmp_dir = Path.home() / "data/sock"
-            ray_tmp_dir.mkdir(exist_ok=True, parents=True)
+            # NOTE: Due to unix max socket length (108 characters) it's best if this is
+            # short and absolute
+            if self.use_custom_ray_tmp_dir:
+                ray_tmp_dir = Path.home() / "data/sock"
+                ray_tmp_dir.mkdir(exist_ok=True, parents=True)
+                ray_args = f"--temp-dir={ray_tmp_dir}"
+            else:
+                ray_args = ""
             rules = {
                 "master": {
                     "nfs_update_secs": 1,
@@ -72,13 +78,14 @@ class Yaspi:
                     "exclude_nodes": f"#SBATCH --exclude={self.exclude}",
                     "head_init_script": str(gen_dir / template_paths["head-node"]),
                     "worker_init_script": str(gen_dir / template_paths["worker-node"]),
+                    "ssh_forward": self.ssh_forward,
                 },
                 "head-node": {
-                    "ray_args": f"--temp-dir={ray_tmp_dir}",
+                    "ray_args": ray_args,
                     "env_setup": self.env_setup,
                 },
                 "worker-node": {
-                    "ray_args": f"--temp-dir={ray_tmp_dir}",
+                    "ray_args": ray_args,
                     "env_setup": self.env_setup,
                 },
             }
@@ -189,9 +196,13 @@ def main():
     parser.add_argument("--gpus_per_task", type=int, default=1,
                         help="the number of gpus requested for each SLURM task")
     parser.add_argument("--env_setup", help="setup string for a custom environment")
+    parser.add_argument("--ssh_forward",
+                        default="ssh -N -f -R 8080:localhost:8080 triton.robots.ox.ac.uk",
+                        help="setup string for a custom environment")
     parser.add_argument("--log_dir", default="data/slurm-logs",
                         help="location where SLURM logs will be stored")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--use_custom_ray_tmp_dir", action="store_true")
     parser.add_argument("--refresh_logs", action="store_true")
     parser.add_argument("--watch", type=int, default=1,
                         help="whether to watch the generated SLURM logs")
@@ -206,13 +217,15 @@ def main():
         exclude=args.exclude,
         job_name=args.job_name,
         partition=args.partition,
+        env_setup=args.env_setup,
+        ssh_forward=args.ssh_forward,
         template_dir=args.template_dir,
-        gen_script_dir=args.gen_script_dir,
-        job_array_size=args.job_array_size,
+        refresh_logs=args.refresh_logs,
         cpus_per_task=args.cpus_per_task,
         gpus_per_task=args.gpus_per_task,
-        refresh_logs=args.refresh_logs,
-        env_setup=args.env_setup,
+        gen_script_dir=args.gen_script_dir,
+        job_array_size=args.job_array_size,
+        use_custom_ray_tmp_dir=args.use_custom_ray_tmp_dir,
     )
     job.submit(watch=True)
 
