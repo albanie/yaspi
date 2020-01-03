@@ -232,7 +232,7 @@ def main():
         job_array_size=args.job_array_size,
         use_custom_ray_tmp_dir=args.use_custom_ray_tmp_dir,
     )
-    job.submit(watch=True)
+    job.submit(watch=args.watch)
 
 if __name__ == "__main__":
     main()
