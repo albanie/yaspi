@@ -15,13 +15,15 @@ class Yaspi:
 
     def __init__(self, job_name, cmd, recipe, gen_script_dir, template_dir, log_dir,
                  partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
-                 exclude, use_custom_ray_tmp_dir, ssh_forward, env_setup=None):
+                 exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit,
+                 env_setup=None):
         self.cmd = cmd
         self.log_dir = log_dir
         self.recipe = recipe
         self.exclude = exclude
         self.job_name = job_name
         self.partition = partition
+        self.time_limit = time_limit
         self.env_setup = env_setup
         self.ssh_forward = ssh_forward
         self.refresh_logs = refresh_logs
@@ -70,6 +72,7 @@ class Yaspi:
                     "log_path": self.log_path,
                     "job_name": self.job_name,
                     "partition": self.partition,
+                    "time_limit": self.time_limit,
                     "env_setup": self.env_setup,
                     "array": f"1-{self.job_array_size}",
                     "cpus_per_task": self.cpus_per_task,
@@ -184,6 +187,8 @@ def main():
                         help="the directory containing the source templates for SLURM")
     parser.add_argument("--partition", default="gpu",
                         help="The name of the SLURM partition used to run the job")
+    parser.add_argument("--time_limit", default="96:00:00",
+                        help="The maximum amount of time allowed to run the job")
     parser.add_argument("--gen_script_dir", default="data/slurm-gen-scripts",
                         help="directory in which generated slurm scripts will be stored")
     parser.add_argument("--cmd", default='echo "hello"',
@@ -216,6 +221,7 @@ def main():
         exclude=args.exclude,
         job_name=args.job_name,
         partition=args.partition,
+        time_limit=args.time_limit,
         env_setup=args.env_setup,
         ssh_forward=args.ssh_forward,
         template_dir=args.template_dir,

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name={{job_name}}
 #SBATCH --array={{array}}
-#SBATCH --time=96:00:00
+#SBATCH --time={{time_limit}}
 #SBATCH --output={{log_path}}
 #SBATCH --partition={{partition}}
 #SBATCH --cpus-per-task={{cpus_per_task}}
