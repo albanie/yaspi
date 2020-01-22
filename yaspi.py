@@ -6,6 +6,7 @@ import re
 import time
 import argparse
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from itertools import zip_longest
 from watchlogs.watchlogs import Watcher
@@ -16,7 +17,7 @@ class Yaspi:
     def __init__(self, job_name, cmd, recipe, gen_script_dir, template_dir, log_dir,
                  partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
                  exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit,
-                 env_setup=None):
+                 throttle_array, env_setup=None):
         self.cmd = cmd
         self.log_dir = log_dir
         self.recipe = recipe
@@ -30,6 +31,7 @@ class Yaspi:
         self.template_dir = template_dir
         self.cpus_per_task = cpus_per_task
         self.gpus_per_task = gpus_per_task
+        self.throttle_array = throttle_array
         self.gen_script_dir = gen_script_dir
         self.job_array_size = job_array_size
         self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
@@ -53,7 +55,8 @@ class Yaspi:
                 "head-node": "ray/start-ray-head-node.sh",
                 "worker-node": "ray/start-ray-worker-node.sh",
             }
-            self.log_path = str(Path(self.log_dir) / self.job_name / "%4a-log.txt")
+            ts = datetime.now().strftime(r"%Y-%m-%d_%H-%M-%S")
+            self.log_path = str(Path(self.log_dir) / self.job_name / ts / "%4a-log.txt")
             # NOTE: Due to unix max socket length (108 characters) it's best if this is
             # short and absolute
             if self.use_custom_ray_tmp_dir:
@@ -62,6 +65,9 @@ class Yaspi:
                 ray_args = f"--temp-dir={ray_tmp_dir}"
             else:
                 ray_args = ""
+            array_str = f"1-{self.job_array_size}"
+            if self.throttle_array:
+                array_str = f"{array_str}%{self.throttle_array}"
             rules = {
                 "master": {
                     "nfs_update_secs": 1,
@@ -74,7 +80,7 @@ class Yaspi:
                     "partition": self.partition,
                     "time_limit": self.time_limit,
                     "env_setup": self.env_setup,
-                    "array": f"1-{self.job_array_size}",
+                    "array": array_str,
                     "cpus_per_task": self.cpus_per_task,
                     "approx_ray_init_time_in_secs": 10,
                     "exclude_nodes": f"#SBATCH --exclude={self.exclude}",
@@ -199,6 +205,8 @@ def main():
                         help="the number of cpus requested for each SLURM task")
     parser.add_argument("--gpus_per_task", type=int, default=1,
                         help="the number of gpus requested for each SLURM task")
+    parser.add_argument("--throttle_array", type=int, default=0,
+                        help="limit the number of array workers running at once")
     parser.add_argument("--env_setup", help="setup string for a custom environment")
     parser.add_argument("--ssh_forward",
                         default="ssh -N -f -R 8080:localhost:8080 triton.robots.ox.ac.uk",
@@ -231,6 +239,7 @@ def main():
         gen_script_dir=args.gen_script_dir,
         job_array_size=args.job_array_size,
         use_custom_ray_tmp_dir=args.use_custom_ray_tmp_dir,
+        throttle_array=args.throttle_array,
     )
     job.submit(watch=args.watch)
 
