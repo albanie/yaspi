@@ -14,11 +14,13 @@ from watchlogs.watchlogs import Watcher
 
 class Yaspi:
 
-    def __init__(self, job_name, cmd, recipe, gen_script_dir, template_dir, log_dir,
+    def __init__(self, job_name, cmd, prep, recipe, gen_script_dir, template_dir, log_dir,
                  partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
                  exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit,
-                 throttle_array, env_setup=None):
+                 throttle_array, mem, job_queue=None, env_setup=None):
         self.cmd = cmd
+        self.mem = mem
+        self.prep = prep
         self.log_dir = log_dir
         self.recipe = recipe
         self.exclude = exclude
@@ -26,6 +28,7 @@ class Yaspi:
         self.partition = partition
         self.time_limit = time_limit
         self.env_setup = env_setup
+        self.job_queue = job_queue
         self.ssh_forward = ssh_forward
         self.refresh_logs = refresh_logs
         self.template_dir = template_dir
@@ -100,6 +103,47 @@ class Yaspi:
             if self.gpus_per_task:
                 resource_str = f"#SBATCH --gres=gpu:{self.gpus_per_task}"
                 rules["sbatch"]["sbatch_resources"] = resource_str
+        elif self.recipe in {"cpu-proc", "gpu-proc"}:
+            if self.env_setup is None:
+                # TODO(Samuel): configure this more sensibly
+                self.env_setup = (
+                    'export PYTHONPATH="${BASE}":$PYTHONPATH\n'
+                    'export PATH="${HOME}/local/anaconda3/condabin/:$PATH"\n'
+                    'source ~/local/anaconda3/etc/profile.d/conda.sh\n'
+                    'conda activate pt14'
+                )
+            template_paths = {
+                "master": f"{self.recipe}/master.sh",
+                "sbatch": f"{self.recipe}/template.sh",
+            }
+            ts = datetime.now().strftime(r"%Y-%m-%d_%H-%M-%S")
+            self.log_path = str(Path(self.log_dir) / self.job_name / ts / "%4a-log.txt")
+            array_str = f"1-{self.job_array_size}"
+            if self.throttle_array:
+                array_str = f"{array_str}%{self.throttle_array}"
+            rules = {
+                "master": {
+                    "sbatch_path": str(gen_dir / template_paths["sbatch"]),
+                },
+                "sbatch": {
+                    "cmd": self.cmd,
+                    "mem": self.mem,
+                    "prep": self.prep,
+                    "array": array_str,
+                    "log_path": self.log_path,
+                    "job_name": self.job_name,
+                    "job_queue": self.job_queue,
+                    "env_setup": self.env_setup,
+                    "partition": self.partition,
+                    "time_limit": self.time_limit,
+                    "cpus_per_task": self.cpus_per_task,
+                    "exclude_nodes": f"#SBATCH --exclude={self.exclude}",
+                    "sbatch_resources": "",
+                },
+            }
+            if self.gpus_per_task and self.recipe == "gpu-proc":
+                resource_str = f"#SBATCH --gres=gpu:{self.gpus_per_task}"
+                rules["sbatch"]["sbatch_resources"] = resource_str
         else:
             raise ValueError(f"template: {self.recipe} unrecognised")
 
@@ -140,7 +184,7 @@ class Yaspi:
             watched_logs.append(str(watched_log.resolve()))
         return watched_logs
 
-    def submit(self, watch=True):
+    def submit(self, watch=True, conserve_resources=5):
         if watch:
             watched_logs = self.get_log_paths()
         submission_cmd = f"source {self.gen_scripts['master']}"
@@ -149,7 +193,7 @@ class Yaspi:
         if watch:
             Watcher(
                 heartbeat=True,
-                conserve_resources=True,
+                conserve_resources=conserve_resources,
                 watched_logs=watched_logs,
             ).run()
 
@@ -199,6 +243,9 @@ def main():
                         help="directory in which generated slurm scripts will be stored")
     parser.add_argument("--cmd", default='echo "hello"',
                         help="single command (or comma separated commands) to run")
+    parser.add_argument("--mem", default='60G',
+                        help="the memory to be requested for each SLURM worker")
+    parser.add_argument("--prep", default="", help="a command to be run before srun")
     parser.add_argument("--job_array_size", type=int, default=2,
                         help="The number of SLURM array workers")
     parser.add_argument("--cpus_per_task", type=int, default=5,
@@ -213,21 +260,25 @@ def main():
                         help="setup string for a custom environment")
     parser.add_argument("--log_dir", default="data/slurm-logs",
                         help="location where SLURM logs will be stored")
-    parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--use_custom_ray_tmp_dir", action="store_true")
     parser.add_argument("--refresh_logs", action="store_true")
     parser.add_argument("--watch", type=int, default=1,
                         help="whether to watch the generated SLURM logs")
     parser.add_argument("--exclude", default="",
                         help="comma separated list of nodes to exclude")
+    parser.add_argument("--job_queue", default="",
+                        help="a queue of jobs to pass to a yaspi recipe")
     args = parser.parse_args()
 
     job = Yaspi(
         cmd=args.cmd,
+        mem=args.mem,
+        prep=args.prep,
         log_dir=args.log_dir,
         recipe=args.recipe,
         exclude=args.exclude,
         job_name=args.job_name,
+        job_queue=args.job_queue,
         partition=args.partition,
         time_limit=args.time_limit,
         env_setup=args.env_setup,
