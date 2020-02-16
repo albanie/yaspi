@@ -2,7 +2,7 @@
 
 The goal of `yaspi` is to provide an interface to submitting [slurm](https://slurm.schedmd.com/documentation.html) jobs, thereby obviating the joys of sbatch files.  It does so through `recipes` - these are collections of templates and rules for generating sbatch scripts.
 
-It should be considered (highly) experimental.
+It should be considered (highly) experimental. 
 
 ### Notes and Usage
 
@@ -18,11 +18,18 @@ python yaspi.py --job_name=example \
                 --job_array_size=${JOB_ARRAY_SIZE} \
                 --cpus_per_task=${CPUS_PER_TASK} \
                 --gpus_per_task=${GPUS_PER_TASK} \
-                --recipe=ray \
+                --recipe=cpu-proc \
                 --refresh_logs
 ```
 
 
 ### Supported recipes:
 
+* `cpu-proc` - a generic recipe for submitting CPU jobs via a job array.
+* `gpu-proc` - a generic recipe for submitting GPU jobs via a job array.
 * `ray` - job submissions for the [ray scheduler](https://github.com/ray-project/ray).
+
+
+### Requirements:
+
+`yaspi` has been tested on CentOS Linux release 7.7.1908 with slurm 18.08.7. YMMV on other platforms.
