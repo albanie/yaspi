@@ -6,7 +6,7 @@ with open("README.md", "r") as f:
     long_description = f.read()
 
 
-# Ensure that extra data (example scripts and recipe templates) are included
+# Ensure that extra data (example scripts and recipe templates) are included
 package_dir = "yaspi"
 extra_package_patterns = ["misc/*.py", "templates/**/*.sh"]
 extra_package_files = []
@@ -18,7 +18,7 @@ for pattern in extra_package_patterns:
 
 setuptools.setup(
     name="yaspi",
-    version="0.0.0.8",
+    version="0.0.0.9",
     entry_points={
         "console_scripts": [
             "yaspi=yaspi.yaspi:main",

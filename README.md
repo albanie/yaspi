@@ -13,7 +13,6 @@ It should be considered (highly) experimental.
 
 `yaspi` makes heavy usage of slurm [job arrays](https://slurm.schedmd.com/job_array.html).  
 
-
 ### Supported recipes:
 
 * `cpu-proc` - a generic recipe for submitting CPU jobs via a job array.
@@ -24,7 +23,6 @@ It should be considered (highly) experimental.
 
 * `Python >= 3.6`
 * `watchlogs`
-
 
 ### Requirements:
 
