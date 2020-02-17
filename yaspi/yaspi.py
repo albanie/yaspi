@@ -14,10 +14,11 @@ from watchlogs.watchlogs import Watcher
 
 class Yaspi:
 
-    def __init__(self, job_name, cmd, prep, recipe, gen_script_dir, template_dir, log_dir,
+    def __init__(self, job_name, cmd, prep, recipe, gen_script_dir, log_dir,
                  partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
-                 exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit, constraint_str,
-                 throttle_array, mem, job_queue=None, env_setup=None):
+                 exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit, throttle_array,
+                 mem, constraint_str, template_dir=Path(__file__).parent / "templates",
+                 job_queue=None, env_setup=None):
         self.cmd = cmd
         self.mem = mem
         self.prep = prep
@@ -242,8 +243,8 @@ def main():
                         help="the name that slurm will give to the job")
     parser.add_argument("--recipe", default="ray",
                         help="the SLURM recipe to use to generate scripts")
-    parser.add_argument("--template_dir", default=Path(__file__).parent / "templates",
-                        help="the directory containing the source templates for SLURM")
+    parser.add_argument("--template_dir",
+                        help="if given, override directory containing SLURM templates")
     parser.add_argument("--partition", default="gpu",
                         help="The name of the SLURM partition used to run the job")
     parser.add_argument("--time_limit", default="96:00:00",
@@ -285,6 +286,12 @@ def main():
         print(Path(__file__).parent)
         return
 
+    # Certain properties use defaults set by the Yaspi class, rather than argparse, to
+    # ensure that users of the Python interface (i.e. directly creating Yaspi object)
+    # can aslo benefit from these defaults
+    prop_keys = {"template_dir"}
+    prop_kwargs = {key: getattr(args, key) for key in optional_keys if getattr(args, key)}
+
     job = Yaspi(
         cmd=args.cmd,
         mem=args.mem,
@@ -307,6 +314,7 @@ def main():
         job_array_size=args.job_array_size,
         use_custom_ray_tmp_dir=args.use_custom_ray_tmp_dir,
         throttle_array=args.throttle_array,
+        **prop_kwargs,
     )
     job.submit(watch=args.watch)
 
