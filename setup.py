@@ -7,7 +7,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="yaspi",
-    version="0.0.0.1",
+    version="0.0.0.2",
     entry_points={
         "console_scripts": [
             "yaspi=yaspi.yaspi:main",

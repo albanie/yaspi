@@ -58,9 +58,9 @@ optional preparation cmd
 I am running on a CPU node --slurm --worker_id 1
 ```
 
-When launched, a slightly more verbose (and colourized) output will be produced by [watchlogs](https://github.com/albanie/watchlogs):
+When launched, a slightly more verbose (and colourized) output will be produced by [watchlogs](https://github.com/albanie/watchlogs) (this assumes your terminal supports color sequences):
 
-![cpu-proc-output](misc/cpu-proc-output.png)
+<img src="misc/cpu-proc.png" alt="cpu-proc-output" title="cpu-proc output"  height="200" />
 
 
 **Code - scheduling a slurm job array with GPUs**:
@@ -79,6 +79,8 @@ yaspi --job_name=example \
       --mem=10G
 ```
 **Effect**: This command is similar to the `cpu-proc` recipe described above. Again, the `command` will be run on two workers as part of a slurm [job array](https://slurm.schedmd.com/job_array.html).  Each worker will be allocated 5 CPUs and 10G of memory by the scheduler, as well as one GPU. One further difference is that `gpu-proc` also takes an `job_queue` option that can be used to pass options to each GPU worker separately.
+
+<img src="misc/gpu-proc.png" alt="gpu-proc-output" title="gpu-proc output"  height="200" />
 
 **Code - scheduling a job with the [ray](https://ray.readthedocs.io/en/latest/index.html) framework:**
 
