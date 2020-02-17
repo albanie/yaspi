@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name={{job_name}}
+#SBATCH --mem={{mem}}
 #SBATCH --array={{array}}
 #SBATCH --time={{time_limit}}
 #SBATCH --output={{log_path}}
