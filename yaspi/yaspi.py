@@ -230,11 +230,13 @@ class Yaspi:
 
 def main():
     parser = argparse.ArgumentParser(description="yaspi tool")
+    parser.add_argument("--install_location", action="store_true",
+                        help="if given, report the install location of yaspi")
     parser.add_argument("--job_name", default="yaspi-test",
                         help="the name that slurm will give to the job")
     parser.add_argument("--recipe", default="ray",
                         help="the SLURM recipe to use to generate scripts")
-    parser.add_argument("--template_dir", default="templates",
+    parser.add_argument("--template_dir", default=Path(__file__).parent / "templates",
                         help="the directory containing the source templates for SLURM")
     parser.add_argument("--partition", default="gpu",
                         help="The name of the SLURM partition used to run the job")
@@ -270,6 +272,10 @@ def main():
     parser.add_argument("--job_queue", default="",
                         help="a queue of jobs to pass to a yaspi recipe")
     args = parser.parse_args()
+
+    if args.install_location:
+        print(Path(__file__).parent)
+        return
 
     job = Yaspi(
         cmd=args.cmd,

@@ -60,7 +60,7 @@ I am running on a CPU node --slurm --worker_id 1
 
 When launched, a slightly more verbose (and colourized) output will be produced by [watchlogs](https://github.com/albanie/watchlogs) (this assumes your terminal supports color sequences):
 
-<img src="misc/cpu-proc.png" alt="cpu-proc-output" title="cpu-proc output"  height="200" />
+<img src="yaspi/misc/cpu-proc.png" alt="cpu-proc-output" title="cpu-proc output"  height="200" />
 
 
 **Code - scheduling a slurm job array with GPUs**:
@@ -80,19 +80,20 @@ yaspi --job_name=example \
 ```
 **Effect**: This command is similar to the `cpu-proc` recipe described above. Again, the `command` will be run on two workers as part of a slurm [job array](https://slurm.schedmd.com/job_array.html).  Each worker will be allocated 5 CPUs and 10G of memory by the scheduler, as well as one GPU. One further difference is that `gpu-proc` also takes an `job_queue` option that can be used to pass options to each GPU worker separately.
 
-<img src="misc/gpu-proc.png" alt="gpu-proc-output" title="gpu-proc output"  height="200" />
+<img src="yaspi/misc/gpu-proc.png" alt="gpu-proc-output" title="gpu-proc output"  height="200" />
 
 **Code - scheduling a job with the [ray](https://ray.readthedocs.io/en/latest/index.html) framework:**
 
 ```
-command="python misc/minimal_ray_example.py"
-yaspi.py --job_name=example \
-         --cmd="$command" \
-         --job_array_size=3 \
-         --cpus_per_task=2 \
-         --gpus_per_task=1 \
-         --mem=10G \
-         --recipe=ray
+yaspi_dir=$(yaspi --install_location)
+command="python $yaspi_dir/misc/minimal_ray_example.py"
+yaspi --job_name=example \
+      --cmd="$command" \
+      --job_array_size=3 \
+      --cpus_per_task=2 \
+      --gpus_per_task=1 \
+      --mem=10G \
+      --recipe=ray
 ```
 
 **Effect**: Scheduling jobs with the ray framework operates in a slightly different manner to the previous two examples (both of which assume [embarrasingly parallel](https://en.wikipedia.org/wiki/Embarrassingly_parallel) processing i.e. no communication between the workers). The ray receipe similarly launches a slurm job array, but assigns the job at index 0 to be the *master*, and all other nodes as *worker* nodes. The command is run *only* on the master node, which then uses ray to allocate tasks to the worker nodes. The command above will launch a slurm job, with the name "example", that: (1) initialises a ray head node and a set of 2 ray workers via a SLURM array job; (2) launches `$command` from the head node. It will produce an output similar to the following:
