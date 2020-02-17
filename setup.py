@@ -18,7 +18,7 @@ for pattern in extra_package_patterns:
 
 setuptools.setup(
     name="yaspi",
-    version="0.0.0.9",
+    version="0.0.0.10",
     entry_points={
         "console_scripts": [
             "yaspi=yaspi.yaspi:main",

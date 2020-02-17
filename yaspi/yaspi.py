@@ -16,7 +16,7 @@ class Yaspi:
 
     def __init__(self, job_name, cmd, prep, recipe, gen_script_dir, template_dir, log_dir,
                  partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
-                 exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit,
+                 exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit, constraint_str,
                  throttle_array, mem, job_queue=None, env_setup=None):
         self.cmd = cmd
         self.mem = mem
@@ -34,6 +34,7 @@ class Yaspi:
         self.template_dir = template_dir
         self.cpus_per_task = cpus_per_task
         self.gpus_per_task = gpus_per_task
+        self.constraint_str = constraint_str
         self.throttle_array = throttle_array
         self.gen_script_dir = gen_script_dir
         self.job_array_size = job_array_size
@@ -103,6 +104,8 @@ class Yaspi:
             }
             if self.gpus_per_task:
                 resource_str = f"#SBATCH --gres=gpu:{self.gpus_per_task}"
+            if self.constraint_str:
+                resource_str = f"{resource_str}\n{self.constraint_str}"
                 rules["sbatch"]["sbatch_resources"] = resource_str
         elif self.recipe in {"cpu-proc", "gpu-proc"}:
             if self.env_setup is None:
@@ -142,9 +145,12 @@ class Yaspi:
                     "sbatch_resources": "",
                 },
             }
+            resource_strs = []
+            if self.constraint_str:
+                resource_strs.append(f"#SBATCH --constraint={self.constraint_str}")
             if self.gpus_per_task and self.recipe == "gpu-proc":
-                resource_str = f"#SBATCH --gres=gpu:{self.gpus_per_task}"
-                rules["sbatch"]["sbatch_resources"] = resource_str
+                resource_strs.append(f"#SBATCH --gres=gpu:{self.gpus_per_task}")
+            rules["sbatch"]["sbatch_resources"] = "\n".join(resource_strs)
         else:
             raise ValueError(f"template: {self.recipe} unrecognised")
 
@@ -269,6 +275,8 @@ def main():
                         help="whether to watch the generated SLURM logs")
     parser.add_argument("--exclude", default="",
                         help="comma separated list of nodes to exclude")
+    parser.add_argument("--constraint_str", default="",
+                        help="SLURM --constraint string")
     parser.add_argument("--job_queue", default="",
                         help="a queue of jobs to pass to a yaspi recipe")
     args = parser.parse_args()
@@ -295,6 +303,7 @@ def main():
         cpus_per_task=args.cpus_per_task,
         gpus_per_task=args.gpus_per_task,
         gen_script_dir=args.gen_script_dir,
+        constraint_str=args.constraint_str,
         job_array_size=args.job_array_size,
         use_custom_ray_tmp_dir=args.use_custom_ray_tmp_dir,
         throttle_array=args.throttle_array,
