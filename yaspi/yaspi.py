@@ -205,9 +205,29 @@ class Yaspi:
                 watched_logs=watched_logs,
             ).run()
 
+    def __repr__(self):
+        """Produce a human-readable string representation of the Yaspi object.
+
+        Returns:
+            (str): a summary of the object settings.
+        """
+        summary = "Yaspi object\n========================\n"
+        kwargs = sorted(self.__dict__.items(), key=lambda x: len(str(x[0]) + str(x[1])))
+        for key, val in kwargs:
+            summary += f"{key}: {val}\n"
+        return summary
 
     def fill_template(self, template_path, rules):
-        """TDDO(Samuel)
+        """Transform a template according to a given set of rules.
+
+        Args:
+            template_path (str): location of the template to be filled.
+            rules (dict[str:object]): a key, value mapping between template keys
+                and their target values.
+
+        Returns:
+            (str): a single string represnting the transformed contents of the template
+                file.
         """
         generated = []
         with open(template_path, "r") as f:
@@ -286,11 +306,11 @@ def main():
         print(Path(__file__).parent)
         return
 
-    # Certain properties use defaults set by the Yaspi class, rather than argparse, to
+    # Certain properties use defaults set by the Yaspi class, rather than argparse, to
     # ensure that users of the Python interface (i.e. directly creating Yaspi object)
     # can aslo benefit from these defaults
     prop_keys = {"template_dir"}
-    prop_kwargs = {key: getattr(args, key) for key in optional_keys if getattr(args, key)}
+    prop_kwargs = {key: getattr(args, key) for key in prop_keys if getattr(args, key)}
 
     job = Yaspi(
         cmd=args.cmd,
@@ -305,7 +325,6 @@ def main():
         time_limit=args.time_limit,
         env_setup=args.env_setup,
         ssh_forward=args.ssh_forward,
-        template_dir=args.template_dir,
         refresh_logs=args.refresh_logs,
         cpus_per_task=args.cpus_per_task,
         gpus_per_task=args.gpus_per_task,
