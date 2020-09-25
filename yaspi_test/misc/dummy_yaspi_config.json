@@ -1,0 +1,18 @@
+{
+    "recipe": "cpu-proc",
+    "partition": "compute",
+    "time_limit": "12:00:00",
+    "gen_script_dir": "data/slurm-gen-scripts",
+    "mem": "32G",
+    "cpus_per_task": 2,
+    "gpus_per_task": 0,
+    "throttle_array": 2,
+    "ssh_forward": "",
+    "log_dir": "data/slurm-logs",
+    "use_custom_ray_tmp_dir": false,
+    "refresh_logs": false,
+    "exclude": "",
+    "constraint_str": "",
+    "prep": "",
+    "env_setup": "export PYTHONPATH=\"${BASE}\":$PYTHONPATH;"
+}

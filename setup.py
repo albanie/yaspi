@@ -2,6 +2,7 @@
 Yaspi setup.py
 
 Build/upload commands:
+coverage run -m pytest .
 python3 setup.py sdist bdist_wheel
 twine upload --skip-existing dist/*
 """

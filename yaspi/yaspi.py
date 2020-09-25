@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from itertools import zip_longest
 from watchlogs.watchlogs import Watcher
-from typing import Optional
+from beartype.cave import NoneTypeOr
 
 
 class Yaspi:
@@ -22,8 +22,8 @@ class Yaspi:
             cmd: str,
             prep: str,
             recipe: str,
-            gen_script_dir: Path,
-            log_dir: Path,
+            gen_script_dir: str,
+            log_dir: str,
             partition: str,
             job_array_size: int,
             cpus_per_task: int,
@@ -37,8 +37,8 @@ class Yaspi:
             mem: str,
             constraint_str: str,
             template_dir: Path = Path(__file__).parent / "templates",
-            job_queue: Optional[str] = None,
-            env_setup: Optional[str] = None,
+            job_queue: NoneTypeOr[str] = None,
+            env_setup: NoneTypeOr[str] = None,
     ):
         self.cmd = cmd
         self.mem = mem
@@ -57,7 +57,7 @@ class Yaspi:
         self.gpus_per_task = gpus_per_task
         self.constraint_str = constraint_str
         self.throttle_array = throttle_array
-        self.gen_script_dir = gen_script_dir
+        self.gen_script_dir = Path(gen_script_dir)
         self.job_array_size = job_array_size
         self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
         self.slurm_logs = None
@@ -66,7 +66,7 @@ class Yaspi:
         self.generate_scripts()
 
     def generate_scripts(self):
-        gen_dir = Path(self.gen_script_dir)
+        gen_dir = self.gen_script_dir
         if self.env_setup is None:
             self.env_setup = (
                 'export PYTHONPATH="${BASE}":$PYTHONPATH\n'
