@@ -1,28 +1,48 @@
 """YASPI - yet another python slurm interface.
 """
 
-import os
 import re
 import time
 import argparse
 import subprocess
+from beartype import beartype
 from datetime import datetime
 from pathlib import Path
 from itertools import zip_longest
 from watchlogs.watchlogs import Watcher
+from typing import Optional
 
 
 class Yaspi:
 
-    def __init__(self, job_name, cmd, prep, recipe, gen_script_dir, log_dir,
-                 partition, job_array_size, cpus_per_task, gpus_per_task, refresh_logs,
-                 exclude, use_custom_ray_tmp_dir, ssh_forward, time_limit, throttle_array,
-                 mem, constraint_str, template_dir=Path(__file__).parent / "templates",
-                 job_queue=None, env_setup=None):
+    @beartype
+    def __init__(
+            self,
+            job_name: str,
+            cmd: str,
+            prep: str,
+            recipe: str,
+            gen_script_dir: Path,
+            log_dir: Path,
+            partition: str,
+            job_array_size: int,
+            cpus_per_task: int,
+            gpus_per_task: int,
+            refresh_logs: bool,
+            exclude: str,
+            use_custom_ray_tmp_dir: bool,
+            ssh_forward: str,
+            time_limit: str,
+            throttle_array: int,
+            mem: str,
+            constraint_str: str,
+            template_dir: Path = Path(__file__).parent / "templates",
+            job_queue: Optional[str] = None,
+            env_setup: Optional[str] = None,
+    ):
         self.cmd = cmd
         self.mem = mem
         self.prep = prep
-        self.log_dir = log_dir
         self.recipe = recipe
         self.exclude = exclude
         self.job_name = job_name
@@ -41,6 +61,8 @@ class Yaspi:
         self.job_array_size = job_array_size
         self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
         self.slurm_logs = None
+        # SLURM expects the logfiles to be absolute paths
+        self.log_dir = Path(log_dir).resolve()
         self.generate_scripts()
 
     def generate_scripts(self):
@@ -192,18 +214,36 @@ class Yaspi:
             watched_logs.append(str(watched_log.resolve()))
         return watched_logs
 
-    def submit(self, watch=True, conserve_resources=5):
+    @beartype
+    def submit(self, watch: bool = True, conserve_resources: int = 5):
         if watch:
             watched_logs = self.get_log_paths()
-        submission_cmd = f"source {self.gen_scripts['master']}"
+        submission_cmd = f"bash {self.gen_scripts['master']}"
         print(f"Submitting job with command: {submission_cmd}")
-        os.system(submission_cmd)
+        proc = subprocess.run(submission_cmd.split(), check=True, capture_output=True)
+        job_id = proc.stdout.decode("utf-8").rstrip()
+
+        assert proc.returncode == 0, "Submission failed!"
+
+        def halting_condition():
+            job_state = f"scontrol show job {job_id}"
+            proc = subprocess.run(job_state.split(), check=True, capture_output=True)
+            regex = "JobState=[A-Z]+"
+            completed = True
+            for match in re.finditer(regex, proc.stdout.decode("utf-8").rstrip()):
+                status = match.group().replace("JobState=", "")
+                if status != "COMPLETED":
+                    return False
+            return completed
+
         if watch:
             Watcher(
                 heartbeat=True,
-                conserve_resources=conserve_resources,
                 watched_logs=watched_logs,
+                halting_condition=halting_condition,
+                conserve_resources=conserve_resources,
             ).run()
+            print("Job completed")
 
     def __repr__(self):
         """Produce a human-readable string representation of the Yaspi object.
@@ -217,16 +257,17 @@ class Yaspi:
             summary += f"{key}: {val}\n"
         return summary
 
-    def fill_template(self, template_path, rules):
+    @beartype
+    def fill_template(self, template_path: Path, rules: dict) -> str:
         """Transform a template according to a given set of rules.
 
         Args:
-            template_path (str): location of the template to be filled.
+            template_path: location of the template to be filled.
             rules (dict[str:object]): a key, value mapping between template keys
                 and their target values.
 
         Returns:
-            (str): a single string represnting the transformed contents of the template
+            A single string represnting the transformed contents of the template
                 file.
         """
         generated = []
@@ -256,7 +297,7 @@ class Yaspi:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="yaspi tool")
+    parser = argparse.ArgumentParser(description="Yaspi Tool")
     parser.add_argument("--install_location", action="store_true",
                         help="if given, report the install location of yaspi")
     parser.add_argument("--job_name", default="yaspi-test",
@@ -288,7 +329,7 @@ def main():
     parser.add_argument("--ssh_forward",
                         default="ssh -N -f -R 8080:localhost:8080 triton.robots.ox.ac.uk",
                         help="setup string for a custom environment")
-    parser.add_argument("--log_dir", default="data/slurm-logs",
+    parser.add_argument("--log_dir", default="data/slurm-logs", type=Path,
                         help="location where SLURM logs will be stored")
     parser.add_argument("--use_custom_ray_tmp_dir", action="store_true")
     parser.add_argument("--refresh_logs", action="store_true")
@@ -335,7 +376,7 @@ def main():
         throttle_array=args.throttle_array,
         **prop_kwargs,
     )
-    job.submit(watch=args.watch)
+    job.submit(watch=bool(args.watch))
 
 if __name__ == "__main__":
     main()

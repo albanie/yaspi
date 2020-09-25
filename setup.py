@@ -1,3 +1,8 @@
+"""
+Build/upload
+python3 setup.py sdist bdist_wheel
+twine upload --skip-existing dist/*
+"""
 import setuptools
 from pathlib import Path
 
@@ -18,7 +23,7 @@ for pattern in extra_package_patterns:
 
 setuptools.setup(
     name="yaspi",
-    version="0.0.0.12",
+    version="0.0.1",
     entry_points={
         "console_scripts": [
             "yaspi=yaspi.yaspi:main",
@@ -34,6 +39,7 @@ setuptools.setup(
     package_data={"yaspi": extra_package_files},
     install_requires=[
         "watchlogs",
+        "beartype"
     ],
     python_requires=">=3.7",
     classifiers=[

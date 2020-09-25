@@ -1,4 +1,5 @@
 #!/bin/bash
 
 # Launch the sbatch job
-sbatch {{sbatch_path}}
+job_id=$(sbatch --parsable {{sbatch_path}})
+echo $job_id
