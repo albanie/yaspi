@@ -1,4 +1,4 @@
-name: zsvision-ci
+name: yaspi-ci
 
 on: [push]
 
