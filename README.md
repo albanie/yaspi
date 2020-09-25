@@ -2,6 +2,7 @@
 
 The goal of `yaspi` is to provide an interface to submitting [slurm](https://slurm.schedmd.com/documentation.html) jobs, thereby obviating the joys of sbatch files.  It does so through `recipes` - these are collections of templates and rules for generating sbatch scripts.
 
+![yaspi-ci](https://github.com/albanie/yaspi/workflows/yaspi-ci/badge.svg)
 
 ### Installation
 
