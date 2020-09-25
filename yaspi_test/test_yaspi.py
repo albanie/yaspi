@@ -5,7 +5,6 @@ It would be possible to CI test SLURM launches by adding docker + slurmd to the
 github workflow, but github doesn't give me enough free testing minutes for that :)
 """
 
-from pathlib import Path
 import json
 from yaspi.yaspi import Yaspi
 

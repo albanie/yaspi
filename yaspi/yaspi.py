@@ -2,15 +2,15 @@
 """
 
 import re
-import time
 import argparse
 import subprocess
-from beartype import beartype
-from datetime import datetime
 from pathlib import Path
+from datetime import datetime
 from itertools import zip_longest
-from watchlogs.watchlogs import Watcher
+
+from beartype import beartype
 from beartype.cave import NoneTypeOr
+from watchlogs.watchlogs import Watcher
 
 
 class Yaspi:
@@ -377,6 +377,7 @@ def main():
         **prop_kwargs,
     )
     job.submit(watch=bool(args.watch))
+
 
 if __name__ == "__main__":
     main()

@@ -6,9 +6,9 @@ coverage run -m pytest .
 python3 setup.py sdist bdist_wheel
 twine upload --skip-existing dist/*
 """
-import setuptools
 from pathlib import Path
 
+import setuptools
 
 with open("README.md", "r") as f:
     long_description = f.read()
