@@ -1,0 +1,18 @@
+{
+    "recipe": "gpu-proc",
+    "partition": "gpu",
+    "time_limit": "24:00:00",
+    "gen_script_dir": "data/slurm-gen-scripts",
+    "mem": "24G",
+    "gpus_per_task": 1,
+    "cpus_per_task": 2,
+    "throttle_array": 20,
+    "ssh_forward": "",
+    "log_dir": "data/slurm-logs",
+    "use_custom_ray_tmp_dir": false,
+    "refresh_logs": false,
+    "exclude": "",
+    "constraint_str": "",
+    "prep": "",
+    "env_setup": "export PYTHONPATH=\"${BASE}\":$PYTHONPATH; export PATH=\"${HOME}\"/local/miniconda3/condabin/:$PATH; source ~/local/miniconda3/etc/profile.d/conda.sh; conda activate py37"
+}

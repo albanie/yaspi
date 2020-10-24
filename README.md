@@ -108,4 +108,14 @@ timestamp from worker: 2020-02-17 06:40:45.065494
 
 **Code - using yaspi directly from python**:
 
-Create a `Yaspi` object with the appropriate options and call its `submit()` method (for example, see how this is done in [yaspi](yaspi/yaspi.py)).
+
+An example for training multiple MNIST runs is given in [train_mnist.py](yaspi/misc/train_mnist.py). Running this file should launch three jobs on SLURM, each with different hyperparameters, producing the output below:
+
+<img src="yaspi/misc/mnist.png" alt="mnist-output" title="mnist output"  width="800" />
+
+
+**Modifying your code to use Yaspi**:
+
+To run an existing piece of code with yaspi requires two things:
+1. A json file containing SLURM settings (e.g. these [yaspi_settings](examples/yaspi_settings.json)). This file will set the options that you would normally set in an SBATCH script (e.g. number of GPUS, total job duration etc.)
+2. A small block of logic somewhere in your script (visible for the MNIST example [here]()) which sets the job name and calls the Yaspi `submit()` function.
