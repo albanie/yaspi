@@ -109,7 +109,7 @@ timestamp from worker: 2020-02-17 06:40:45.065494
 **Code - using yaspi directly from python**:
 
 
-An example for training multiple MNIST runs is given in [train_mnist.py](yaspi/misc/train_mnist.py). Running this file should launch three jobs on SLURM, each with different hyperparameters, producing the output below:
+An example for training multiple MNIST runs is given in [train_mnist.py](examples/train_mnist.py). Running this file should launch three jobs on SLURM, each with different hyperparameters, producing the output below:
 
 <img src="yaspi/misc/mnist.png" alt="mnist-output" title="mnist output"  width="800" />
 
