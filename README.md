@@ -117,5 +117,5 @@ An example for training multiple MNIST runs is given in [train_mnist.py](example
 **Modifying your code to use Yaspi**:
 
 To run an existing piece of code with yaspi requires two things:
-1. A json file containing SLURM settings (e.g. these [yaspi_settings](examples/yaspi_settings.json)). This file will set the options that you would normally set in an SBATCH script (e.g. number of GPUS, total job duration etc.)
-2. A small block of logic somewhere in your script (visible for the MNIST example [here]()) which sets the job name and calls the Yaspi `submit()` function.
+1. A json file containing SLURM settings (e.g. these [yaspi_settings](examples/yaspi_settings.json)). This file will set the options that you would normally set in an SBATCH script (e.g. number of GPUS, total job duration etc.) together with any bash commands you would usually run to set up your job environment (these are supplied via the `"env_estup"` option)
+2. A small block of logic somewhere in your script (visible for the MNIST example [here](https://github.com/albanie/yaspi/blob/master/examples/train_mnist.py#L120-L165)) which sets the job name and calls the Yaspi `submit()` function.
