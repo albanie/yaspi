@@ -22,8 +22,8 @@ class Yaspi:
             cmd: str,
             prep: str,
             recipe: str,
-            gen_script_dir: str,
-            log_dir: str,
+            gen_script_dir: Path,
+            log_dir: Path,
             partition: str,
             job_array_size: int,
             cpus_per_task: int,
@@ -57,7 +57,7 @@ class Yaspi:
         self.gpus_per_task = gpus_per_task
         self.constraint_str = constraint_str
         self.throttle_array = throttle_array
-        self.gen_script_dir = Path(gen_script_dir)
+        self.gen_script_dir = gen_script_dir
         self.job_array_size = job_array_size
         self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
         self.slurm_logs = None
@@ -305,12 +305,14 @@ def main():
     parser.add_argument("--recipe", default="ray",
                         help="the SLURM recipe to use to generate scripts")
     parser.add_argument("--template_dir",
+                        type=Path,
                         help="if given, override directory containing SLURM templates")
     parser.add_argument("--partition", default="gpu",
                         help="The name of the SLURM partition used to run the job")
     parser.add_argument("--time_limit", default="96:00:00",
                         help="The maximum amount of time allowed to run the job")
     parser.add_argument("--gen_script_dir", default="data/slurm-gen-scripts",
+                        type=Path,
                         help="directory in which generated slurm scripts will be stored")
     parser.add_argument("--cmd", default='echo "hello"',
                         help="single command (or comma separated commands) to run")
