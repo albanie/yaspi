@@ -220,17 +220,15 @@ class Yaspi:
             watched_logs = self.get_log_paths()
         submission_cmd = f"bash {self.gen_scripts['master']}"
         print(f"Submitting job with command: {submission_cmd}")
-        proc = subprocess.run(submission_cmd.split(), check=True, capture_output=True)
-        job_id = proc.stdout.decode("utf-8").rstrip()
-
-        assert proc.returncode == 0, "Submission failed!"
+        out = subprocess.check_output(submission_cmd.split())
+        job_id = out.decode("utf-8").rstrip()
 
         def halting_condition():
             job_state = f"scontrol show job {job_id}"
-            proc = subprocess.run(job_state.split(), check=True, capture_output=True)
+            out = subprocess.check_output(job_state.split())
             regex = "JobState=[A-Z]+"
             completed = True
-            for match in re.finditer(regex, proc.stdout.decode("utf-8").rstrip()):
+            for match in re.finditer(regex, out.decode("utf-8").rstrip()):
                 status = match.group().replace("JobState=", "")
                 if status != "COMPLETED":
                     return False
