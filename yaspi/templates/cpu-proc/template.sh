@@ -6,8 +6,9 @@
 #SBATCH --output={{log_path}}
 #SBATCH --partition={{partition}}
 #SBATCH --cpus-per-task={{cpus_per_task}}
-{{sbatch_resources}}
 {{exclude_nodes}}
+{{custom_directives}}
+{{sbatch_resources}}
 # -------------------------------
 
 # enable terminal stdout logging
