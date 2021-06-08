@@ -19,7 +19,7 @@ echo "=================================================================="
 
 # Run the loop of runs for this task.
 worker_id=$((SLURM_ARRAY_TASK_ID - 1))
-echo "This is SLURM task $SLURM_ARRAY_TASK_ID, worker id $worker_id"
+echo "($HOSTNAME) This is SLURM task $SLURM_ARRAY_TASK_ID, worker id $worker_id"
 
 # handle potential ipython issues with history
 export IPYTHONDIR=/tmp
