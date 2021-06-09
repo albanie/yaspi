@@ -222,7 +222,8 @@ class Yaspi:
         if watch:
             watched_logs = self.get_log_paths()
         submission_cmd = f"bash {self.gen_scripts['master']}"
-        print(f"Submitting job with command: {submission_cmd}")
+        print(f"Submitting job with wrapper: {submission_cmd}")
+        print(f"using command:\n{self.cmd}")
         proc = subprocess.run(submission_cmd.split(), check=True, capture_output=True)
         job_id = proc.stdout.decode("utf-8").rstrip()
 
