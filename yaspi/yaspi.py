@@ -13,6 +13,9 @@ from beartype.cave import NoneTypeOr
 from watchlogs.watchlogs import Watcher
 
 
+OR_DELETE_LINE = "|ordeleteline"
+
+
 class Yaspi:
 
     @beartype
@@ -22,20 +25,21 @@ class Yaspi:
             cmd: str,
             prep: str,
             recipe: str,
-            gen_script_dir: str,
-            log_dir: str,
-            partition: str,
+            gen_script_dir: Path,
+            log_dir: Path,
+            partition: NoneTypeOr[str],
             job_array_size: int,
-            cpus_per_task: int,
-            gpus_per_task: int,
+            cpus_per_task: NoneTypeOr[int],
+            gpus_per_task: NoneTypeOr[int],
             refresh_logs: bool,
             exclude: str,
             use_custom_ray_tmp_dir: bool,
             ssh_forward: str,
-            time_limit: str,
+            time_limit: NoneTypeOr[str],
             throttle_array: int,
             mem: str,
             constraint_str: str,
+            custom_directives: str = "",
             template_dir: Path = Path(__file__).parent / "templates",
             job_queue: NoneTypeOr[str] = None,
             env_setup: NoneTypeOr[str] = None,
@@ -57,9 +61,10 @@ class Yaspi:
         self.gpus_per_task = gpus_per_task
         self.constraint_str = constraint_str
         self.throttle_array = throttle_array
-        self.gen_script_dir = Path(gen_script_dir)
+        self.gen_script_dir = gen_script_dir
         self.job_array_size = job_array_size
         self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
+        self.custom_directives = custom_directives
         self.slurm_logs = None
         # SLURM expects the logfiles to be absolute paths
         self.log_dir = Path(log_dir).resolve()
@@ -125,11 +130,7 @@ class Yaspi:
                     "env_setup": self.env_setup,
                 },
             }
-            if self.gpus_per_task:
-                resource_str = f"#SBATCH --gres=gpu:{self.gpus_per_task}"
-            if self.constraint_str:
-                resource_str = f"{resource_str}\n{self.constraint_str}"
-                rules["sbatch"]["sbatch_resources"] = resource_str
+            self._add_batch_resources(rules)
         elif self.recipe in {"cpu-proc", "gpu-proc"}:
             if self.env_setup is None:
                 # TODO(Samuel): configure this more sensibly
@@ -166,14 +167,10 @@ class Yaspi:
                     "cpus_per_task": self.cpus_per_task,
                     "exclude_nodes": f"#SBATCH --exclude={self.exclude}",
                     "sbatch_resources": "",
+                    "custom_directives": self.custom_directives,
                 },
             }
-            resource_strs = []
-            if self.constraint_str:
-                resource_strs.append(f"#SBATCH --constraint={self.constraint_str}")
-            if self.gpus_per_task and self.recipe == "gpu-proc":
-                resource_strs.append(f"#SBATCH --gres=gpu:{self.gpus_per_task}")
-            rules["sbatch"]["sbatch_resources"] = "\n".join(resource_strs)
+            self._add_batch_resources(rules, self.recipe == "gpu-proc")
         else:
             raise ValueError(f"template: {self.recipe} unrecognised")
 
@@ -190,6 +187,14 @@ class Yaspi:
                 print(f"Writing slurm script ({key}) to {dest_path}")
                 f.write(gen)
             dest_path.chmod(0o755)
+
+    def _add_batch_resources(self, rules, allow_gpu=True):
+        resource_strs = []
+        if self.constraint_str:
+            resource_strs.append(f"#SBATCH --constraint={self.constraint_str}")
+        if self.gpus_per_task and allow_gpu:
+            resource_strs.append(f"#SBATCH --gres=gpu:{self.gpus_per_task}")
+        rules["sbatch"]["sbatch_resources"] = "\n".join(resource_strs)
 
     def get_log_paths(self):
         watched_logs = []
@@ -220,9 +225,10 @@ class Yaspi:
             watched_logs = self.get_log_paths()
         submission_cmd = f"bash {self.gen_scripts['master']}"
         print(f"Submitting job with command: {submission_cmd}")
+        print(f"using command:\n{self.cmd}")
         out = subprocess.check_output(submission_cmd.split())
         job_id = out.decode("utf-8").rstrip()
-
+        
         def halting_condition():
             job_state = f"scontrol show job {job_id}"
             out = subprocess.check_output(job_state.split())
@@ -272,14 +278,24 @@ class Yaspi:
         with open(template_path, "r") as f:
             template = f.read().splitlines()
         for row in template:
+            skip_row = False
             edits = []
             regex = r"\{\{(.*?)\}\}"
             for match in re.finditer(regex, row):
                 groups = match.groups()
                 assert len(groups) == 1, "expected single group"
                 key = groups[0]
+                ordeleteline = False
+                if key.endswith(OR_DELETE_LINE):
+                    ordeleteline = True
+                    key = key[:-len(OR_DELETE_LINE)]
                 token = rules[key]
+                if ordeleteline and token is None:
+                    skip_row = True
+                    break
                 edits.append((match.span(), token))
+            if skip_row:
+                continue
             if edits:
                 # invert the spans
                 spans = [(None, 0)] + [x[0] for x in edits] + [(len(row), None)]
@@ -303,23 +319,25 @@ def main():
     parser.add_argument("--recipe", default="ray",
                         help="the SLURM recipe to use to generate scripts")
     parser.add_argument("--template_dir",
+                        type=Path,
                         help="if given, override directory containing SLURM templates")
-    parser.add_argument("--partition", default="gpu",
+    parser.add_argument("--partition", default=None,
                         help="The name of the SLURM partition used to run the job")
-    parser.add_argument("--time_limit", default="96:00:00",
+    parser.add_argument("--time_limit", default=None,
                         help="The maximum amount of time allowed to run the job")
     parser.add_argument("--gen_script_dir", default="data/slurm-gen-scripts",
+                        type=Path,
                         help="directory in which generated slurm scripts will be stored")
     parser.add_argument("--cmd", default='echo "hello"',
                         help="single command (or comma separated commands) to run")
-    parser.add_argument("--mem", default='60G',
+    parser.add_argument("--mem", default=None,
                         help="the memory to be requested for each SLURM worker")
     parser.add_argument("--prep", default="", help="a command to be run before srun")
     parser.add_argument("--job_array_size", type=int, default=2,
                         help="The number of SLURM array workers")
-    parser.add_argument("--cpus_per_task", type=int, default=5,
+    parser.add_argument("--cpus_per_task", type=int, default=None,
                         help="the number of cpus requested for each SLURM task")
-    parser.add_argument("--gpus_per_task", type=int, default=1,
+    parser.add_argument("--gpus_per_task", type=int, default=None,
                         help="the number of gpus requested for each SLURM task")
     parser.add_argument("--throttle_array", type=int, default=0,
                         help="limit the number of array workers running at once")
@@ -327,7 +345,7 @@ def main():
     parser.add_argument("--ssh_forward",
                         default="ssh -N -f -R 8080:localhost:8080 triton.robots.ox.ac.uk",
                         help="setup string for a custom environment")
-    parser.add_argument("--log_dir", default="data/slurm-logs", type=Path,
+    parser.add_argument("--log_dir", default="data/slurm-logs", type=str,
                         help="location where SLURM logs will be stored")
     parser.add_argument("--use_custom_ray_tmp_dir", action="store_true")
     parser.add_argument("--refresh_logs", action="store_true")
@@ -339,6 +357,9 @@ def main():
                         help="SLURM --constraint string")
     parser.add_argument("--job_queue", default="",
                         help="a queue of jobs to pass to a yaspi recipe")
+    parser.add_argument("--custom_directives", default="",
+                        help=('Add any extra directives here, separated by newlines'
+                              'e.g. "#SBATCH -A account-name\n#SBATCH --mem 10G"'))
     args = parser.parse_args()
 
     if args.install_location:
@@ -348,7 +369,7 @@ def main():
     # Certain properties use defaults set by the Yaspi class, rather than argparse, to
     # ensure that users of the Python interface (i.e. directly creating Yaspi object)
     # can aslo benefit from these defaults
-    prop_keys = {"template_dir"}
+    prop_keys = {"template_dir", "custom_directives"}
     prop_kwargs = {key: getattr(args, key) for key in prop_keys if getattr(args, key)}
 
     job = Yaspi(

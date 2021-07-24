@@ -14,5 +14,6 @@
     "exclude": "",
     "constraint_str": "",
     "prep": "",
+    "custom_directives": "#SBATCH --comment \"a harmless comment\"",
     "env_setup": "export PYTHONPATH=\"${BASE}\":$PYTHONPATH;"
 }
