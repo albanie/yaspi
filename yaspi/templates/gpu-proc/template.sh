@@ -1,11 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name={{job_name}}
-#SBATCH --mem={{mem}}
+#SBATCH --mem={{mem|ordeleteline}}
 #SBATCH --array={{array}}
-#SBATCH --time={{time_limit}}
+#SBATCH --time={{time_limit|ordeleteline}}
 #SBATCH --output={{log_path}}
-#SBATCH --partition={{partition}}
-#SBATCH --cpus-per-task={{cpus_per_task}}
+#SBATCH --partition={{partition|ordeleteline}}
+#SBATCH --cpus-per-task={{cpus_per_task|ordeleteline}}
+{{sbatch_resources}}
 {{exclude_nodes}}
 {{custom_directives}}
 {{sbatch_resources}}
