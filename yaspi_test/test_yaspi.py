@@ -30,7 +30,6 @@ def test_yaspi_object_creation():
         **yaspi_defaults,
     )
     print(f"Test yaspi object: {yaspi}")
-    yaspi.submit()
 
 
 def test_yaspi_object_line_deletion():
