@@ -103,6 +103,15 @@ python yaspi.py --job_name=example \
       --mem=10G
 ```
 
+Custom directives can also be added to json config. For example, to receive emails from slurm, add a `"custom_directives"` flag:
+
+```
+{
+      ...
+      "custom_directives": "#SBATCH --mail-type=END,FAIL\n#SBATCH --mail-user=your_email_address",
+}
+```
+
 **Code - scheduling a job with the [ray](https://ray.readthedocs.io/en/latest/index.html) framework:**
 
 ```

@@ -13,9 +13,6 @@ from beartype.cave import NoneTypeOr
 from watchlogs.watchlogs import Watcher
 
 
-OR_DELETE_LINE = "|ordeleteline"
-
-
 class Yaspi:
 
     @beartype
@@ -38,7 +35,7 @@ class Yaspi:
             time_limit: NoneTypeOr[str],
             throttle_array: int,
             mem: str,
-            constraint_str: str,
+            constraint_str: NoneTypeOr[str],
             custom_directives: str = "",
             template_dir: Path = Path(__file__).parent / "templates",
             job_queue: NoneTypeOr[str] = None,
@@ -166,8 +163,8 @@ class Yaspi:
                     "time_limit": self.time_limit,
                     "cpus_per_task": self.cpus_per_task,
                     "exclude_nodes": f"#SBATCH --exclude={self.exclude}",
-                    "sbatch_resources": "",
                     "custom_directives": self.custom_directives,
+                    "sbatch_resources": None,
                 },
             }
             self._add_batch_resources(rules, self.recipe == "gpu-proc")
@@ -228,7 +225,7 @@ class Yaspi:
         print(f"using command:\n{self.cmd}")
         out = subprocess.check_output(submission_cmd.split())
         job_id = out.decode("utf-8").rstrip()
-        
+
         def halting_condition():
             job_state = f"scontrol show job {job_id}"
             out = subprocess.check_output(job_state.split())
@@ -277,6 +274,11 @@ class Yaspi:
         generated = []
         with open(template_path, "r") as f:
             template = f.read().splitlines()
+
+        # A template key use to denote sbatch directives that can be removed
+        # if no value is specified
+        OR_DELETE_LINE = "|ordeleteline"
+
         for row in template:
             skip_row = False
             edits = []
@@ -353,8 +355,7 @@ def main():
                         help="whether to watch the generated SLURM logs")
     parser.add_argument("--exclude", default="",
                         help="comma separated list of nodes to exclude")
-    parser.add_argument("--constraint_str", default="",
-                        help="SLURM --constraint string")
+    parser.add_argument("--constraint_str", help="SLURM --constraint string")
     parser.add_argument("--job_queue", default="",
                         help="a queue of jobs to pass to a yaspi recipe")
     parser.add_argument("--custom_directives", default="",

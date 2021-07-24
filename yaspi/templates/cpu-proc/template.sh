@@ -6,7 +6,7 @@
 #SBATCH --output={{log_path}}
 #SBATCH --partition={{partition|ordeleteline}}
 #SBATCH --cpus-per-task={{cpus_per_task|ordeleteline}}
-{{sbatch_resources}}
+{{sbatch_resources|ordeleteline}}
 {{exclude_nodes}}
 {{custom_directives}}
 {{sbatch_resources}}
