@@ -81,6 +81,28 @@ yaspi --job_name=example \
 
 <img src="yaspi/misc/gpu-proc.png" alt="gpu-proc-output" title="gpu-proc output"  height="200" />
 
+**Extras - custom directives**:
+
+The previous example can be extended with custom directives.  For example, suppose
+you wish to add an extra directive to your `sbatch` of the form
+`#SBATCH --comment "a harmless comment goes here"`.  You can do this as follows:
+```
+prep_command='echo \"optional preparation cmd\"'
+job_queue="\"flags for worker 0\" \"flags for worker 1\""
+command='echo \"I am running on a GPU node\"'
+custom_directive='#SBATCH --comment "a harmless comment goes here"'
+python yaspi.py --job_name=example \
+      --job_array_size=2 \
+      --cpus_per_task=5 \
+      --gpus_per_task=1 \
+      --prep="$prep_command" \
+      --cmd="$command" \
+      --recipe=gpu-proc \
+      --job_queue="$job_queue" \
+      --custom_directive="$custom_directive" \
+      --mem=10G
+```
+
 **Code - scheduling a job with the [ray](https://ray.readthedocs.io/en/latest/index.html) framework:**
 
 ```
