@@ -130,11 +130,7 @@ class Yaspi:
                     "env_setup": self.env_setup,
                 },
             }
-            if self.gpus_per_task:
-                resource_str = f"#SBATCH --gres=gpu:{self.gpus_per_task}"
-            if self.constraint_str:
-                resource_str = f"{resource_str}\n{self.constraint_str}"
-                rules["sbatch"]["sbatch_resources"] = resource_str
+            self._add_batch_resources(rules)
         elif self.recipe in {"cpu-proc", "gpu-proc"}:
             if self.env_setup is None:
                 # TODO(Samuel): configure this more sensibly
@@ -174,12 +170,7 @@ class Yaspi:
                     "custom_directives": self.custom_directives,
                 },
             }
-            resource_strs = []
-            if self.constraint_str:
-                resource_strs.append(f"#SBATCH --constraint={self.constraint_str}")
-            if self.gpus_per_task and self.recipe == "gpu-proc":
-                resource_strs.append(f"#SBATCH --gres=gpu:{self.gpus_per_task}")
-            rules["sbatch"]["sbatch_resources"] = "\n".join(resource_strs)
+            self._add_batch_resources(rules, self.recipe == "gpu-proc")
         else:
             raise ValueError(f"template: {self.recipe} unrecognised")
 
@@ -196,6 +187,14 @@ class Yaspi:
                 print(f"Writing slurm script ({key}) to {dest_path}")
                 f.write(gen)
             dest_path.chmod(0o755)
+
+    def _add_batch_resources(self, rules, allow_gpu=True):
+        resource_strs = []
+        if self.constraint_str:
+            resource_strs.append(f"#SBATCH --constraint={self.constraint_str}")
+        if self.gpus_per_task and allow_gpu:
+            resource_strs.append(f"#SBATCH --gres=gpu:{self.gpus_per_task}")
+        rules["sbatch"]["sbatch_resources"] = "\n".join(resource_strs)
 
     def get_log_paths(self):
         watched_logs = []
