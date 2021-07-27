@@ -4,6 +4,7 @@
 import re
 import argparse
 import subprocess
+from typing import Union
 from pathlib import Path
 from datetime import datetime
 from itertools import zip_longest
@@ -22,8 +23,8 @@ class Yaspi:
             cmd: str,
             prep: str,
             recipe: str,
-            gen_script_dir: Path,
-            log_dir: Path,
+            gen_script_dir: Union[Path, str],
+            log_dir: Union[Path, str],
             partition: NoneTypeOr[str],
             job_array_size: int,
             cpus_per_task: NoneTypeOr[int],
@@ -53,15 +54,15 @@ class Yaspi:
         self.job_queue = job_queue
         self.ssh_forward = ssh_forward
         self.refresh_logs = refresh_logs
-        self.template_dir = template_dir
+        self.template_dir = Path(template_dir)
         self.cpus_per_task = cpus_per_task
         self.gpus_per_task = gpus_per_task
         self.constraint_str = constraint_str
         self.throttle_array = throttle_array
-        self.gen_script_dir = gen_script_dir
         self.job_array_size = job_array_size
         self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
         self.custom_directives = custom_directives
+        self.gen_script_dir = Path(gen_script_dir)
         self.slurm_logs = None
         # SLURM expects the logfiles to be absolute paths
         self.log_dir = Path(log_dir).resolve()
