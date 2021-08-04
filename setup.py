@@ -2,7 +2,7 @@
 Yaspi setup.py
 
 Build/upload commands:
-coverage run -m pytest .
+coverage run -m pytest --capture=tee-sys yaspi_test
 python3 setup.py sdist bdist_wheel
 twine upload --skip-existing dist/*
 """
@@ -26,7 +26,7 @@ for pattern in extra_package_patterns:
 
 setuptools.setup(
     name="yaspi",
-    version="0.0.7",
+    version="0.0.8",
     entry_points={
         "console_scripts": [
             "yaspi=yaspi.yaspi:main",
@@ -42,7 +42,7 @@ setuptools.setup(
     package_data={"yaspi": extra_package_files},
     install_requires=[
         "watchlogs",
-        "beartype"
+        "beartype>=0.7.1"
     ],
     python_requires=">=3.7",
     classifiers=[

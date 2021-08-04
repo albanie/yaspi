@@ -150,3 +150,11 @@ An example for training multiple MNIST runs is given in [train_mnist.py](example
 To run an existing piece of code with yaspi requires two things:
 1. A json file containing SLURM settings (e.g. these [yaspi_settings](examples/yaspi_settings.json)). This file will set the options that you would normally set in an SBATCH script (e.g. number of GPUS, total job duration etc.) together with any bash commands you would usually run to set up your job environment (these are supplied via the `"env_estup"` option)
 2. A small block of logic somewhere in your script (visible for the MNIST example [here](https://github.com/albanie/yaspi/blob/master/examples/train_mnist.py#L120-L165)) which sets the job name and calls the Yaspi `submit()` function.
+
+**Using code snapshot directories**:
+
+One downside of launching a yaspi job directly from a source code folder is that if you edit your code after submitting your jobs to slurm but the jobs haven't yet launched, the code edits will affect the jobs. Since this is (typically) undesirable behaviour, you can supply extra flags to yaspi so that it copies the source code in your current folder to a new "snapshot" directory and launches from there.  As a consequence, any local code changes you make after launching with yaspi will not affect the queued jobs. The flags to pass are:
+```
+--code_snapshot_dir snapshot_dir # <snapshot_dir> is the location where the snapshot of your code will be stored
+--code_snapshot_filter_patterns patterns # <patterns> are a set of glob-patterns to determine which source code is copied
+```

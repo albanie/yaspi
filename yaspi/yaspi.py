@@ -2,9 +2,10 @@
 """
 
 import re
+import shutil
 import argparse
 import subprocess
-from typing import Union
+from typing import List, Union
 from pathlib import Path
 from datetime import datetime
 from itertools import zip_longest
@@ -41,6 +42,8 @@ class Yaspi:
             template_dir: Path = Path(__file__).parent / "templates",
             job_queue: NoneTypeOr[str] = None,
             env_setup: NoneTypeOr[str] = None,
+            code_snapshot_dir: NoneTypeOr[Path, str] = None,
+            code_snapshot_filter_patterns: List[str] = ["**/*.py", "symlinks"],
     ):
         self.cmd = cmd
         self.mem = mem
@@ -63,6 +66,11 @@ class Yaspi:
         self.use_custom_ray_tmp_dir = use_custom_ray_tmp_dir
         self.custom_directives = custom_directives
         self.gen_script_dir = Path(gen_script_dir)
+        if code_snapshot_dir is not None:
+            self.code_snapshot_dir = Path(code_snapshot_dir).resolve()
+        else:
+            self.code_snapshot_dir = None
+        self.code_snapshot_filter_patterns = code_snapshot_filter_patterns
         self.slurm_logs = None
         # SLURM expects the logfiles to be absolute paths
         self.log_dir = Path(log_dir).resolve()
@@ -77,6 +85,23 @@ class Yaspi:
                 'source ~/local/anaconda3/etc/profile.d/conda.sh\n'
                 'conda activate pt37'
             )
+
+        # set up logging
+        ts = datetime.now().strftime(r"%Y-%m-%d_%H-%M-%S")
+        self.log_path = str(Path(self.log_dir) / self.job_name / ts / "%4a-log.txt")
+
+        if self.code_snapshot_dir is not None:
+            supported_recipes = {"cpu-proc", "gpu-proc"}
+            assert self.recipe in supported_recipes, (
+                f"For now, `code_snapshot_dir` is only supported for {supported_recipes}"
+                f" ({self.recipe} is not yet supported)"
+            )
+            code_snapshot_dir = self.code_snapshot_dir / self.job_name / ts
+            self.copy_to_snapshot_dir(code_snapshot_dir=code_snapshot_dir)
+            # modify the srun command to first move to the code snapshot directory before
+            # the user command is launched
+            self.cmd = f"cd {code_snapshot_dir} ; {self.cmd}"
+
         if self.recipe == "ray":
             # TODO(Samuel): configure this more sensibly
             template_paths = {
@@ -85,8 +110,6 @@ class Yaspi:
                 "head-node": "ray/start-ray-head-node.sh",
                 "worker-node": "ray/start-ray-worker-node.sh",
             }
-            ts = datetime.now().strftime(r"%Y-%m-%d_%H-%M-%S")
-            self.log_path = str(Path(self.log_dir) / self.job_name / ts / "%4a-log.txt")
             # NOTE: Due to unix max socket length (108 characters) it's best if this is
             # short and absolute
             if self.use_custom_ray_tmp_dir:
@@ -142,8 +165,6 @@ class Yaspi:
                 "master": f"{self.recipe}/master.sh",
                 "sbatch": f"{self.recipe}/template.sh",
             }
-            ts = datetime.now().strftime(r"%Y-%m-%d_%H-%M-%S")
-            self.log_path = str(Path(self.log_dir) / self.job_name / ts / "%4a-log.txt")
             array_str = f"1-{self.job_array_size}"
             if self.throttle_array:
                 array_str = f"{array_str}%{self.throttle_array}"
@@ -193,6 +214,23 @@ class Yaspi:
         if self.gpus_per_task and allow_gpu:
             resource_strs.append(f"#SBATCH --gres=gpu:{self.gpus_per_task}")
         rules["sbatch"]["sbatch_resources"] = "\n".join(resource_strs)
+
+    @beartype
+    def copy_to_snapshot_dir(self, code_snapshot_dir: Path):
+        src_files_to_copy = set()
+        for pattern in self.code_snapshot_filter_patterns:
+            if pattern == "symlinks":
+                candidates = Path(".").glob("**/*")
+                src_files = [x for x in candidates if x.is_symlink()]
+            else:
+                src_files = list(Path(".").glob(pattern))
+            src_files_to_copy.update(src_files)
+
+        print(f"Copying {len(src_files_to_copy)} src files to {code_snapshot_dir}")
+        for src_file in src_files_to_copy:
+            dest_path = code_snapshot_dir / src_file
+            dest_path.parent.mkdir(exist_ok=True, parents=True)
+            shutil.copyfile(str(src_file), str(dest_path), follow_symlinks=False)
 
     def get_log_paths(self):
         watched_logs = []
@@ -362,6 +400,20 @@ def main():
     parser.add_argument("--custom_directives", default="",
                         help=('Add any extra directives here, separated by newlines'
                               'e.g. "#SBATCH -A account-name\n#SBATCH --mem 10G"'))
+    parser.add_argument("--code_snapshot_dir", type=Path,
+                        help=("if this argument is supplied, yaspi will make a snapshot "
+                              "of the codebase (starting from the current root directory),"
+                              "copy the snapshot to `code_snapshot_dir`, and then launch"
+                              "the command from there. Currently, only supported for the"
+                              "'cpu-proc' and 'gpu-proc' recipes"))
+    parser.add_argument("--code_snapshot_filter_patterns", nargs="+",
+                        default=["**/*.py", "symlinks"],
+                        help=("if `--code_snapshot_dir` is supplied, then "
+                              "`--code_snapshot_filter_patterns` is used as a glob pattern "
+                              "to select which files will be included in the snapshot.  If "
+                              "`symlinks` is included as a filter pattern, it is treated "
+                              "as a special pattern that mimics symlinks in the original "
+                              "code dir"))
     args = parser.parse_args()
 
     if args.install_location:
@@ -395,6 +447,8 @@ def main():
         job_array_size=args.job_array_size,
         use_custom_ray_tmp_dir=args.use_custom_ray_tmp_dir,
         throttle_array=args.throttle_array,
+        code_snapshot_dir=args.code_snapshot_dir,
+        code_snapshot_filter_patterns=args.code_snapshot_filter_patterns,
         **prop_kwargs,
     )
     job.submit(watch=bool(args.watch))
