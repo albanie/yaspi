@@ -390,6 +390,7 @@ def main():
                         help="location where SLURM logs will be stored")
     parser.add_argument("--use_custom_ray_tmp_dir", action="store_true")
     parser.add_argument("--refresh_logs", action="store_true")
+    parser.add_argument("--dry_run", action="store_true")
     parser.add_argument("--watch", type=int, default=1,
                         help="whether to watch the generated SLURM logs")
     parser.add_argument("--exclude", default="",
@@ -451,7 +452,9 @@ def main():
         code_snapshot_filter_patterns=args.code_snapshot_filter_patterns,
         **prop_kwargs,
     )
-    job.submit(watch=bool(args.watch))
+
+    if not args.dry_run:
+        job.submit(watch=bool(args.watch))
 
 
 if __name__ == "__main__":
